@@ -285,6 +285,10 @@ module OmniAuth
         @logout_path_pattern ||= %r{\A#{Regexp.quote(request_path)}(/logout)}
       end
 
+      def params
+        request.params
+      end
+
       class CallbackError < StandardError
         attr_accessor :error, :error_reason, :error_uri
 
