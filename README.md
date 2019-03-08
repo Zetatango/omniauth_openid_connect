@@ -4,6 +4,8 @@ Originally was [omniauth-openid-connect](https://github.com/jjbohn/omniauth-open
 
 I've forked this repository and launch as separate gem because maintaining of original was dropped.
 
+[![Build Status](https://travis-ci.org/m0n9oose/omniauth_openid_connect.png?branch=master)](https://travis-ci.org/m0n9oose/omniauth_openid_connect)
+
 ## Installation
 
 Add this line to your application's Gemfile:
@@ -26,6 +28,7 @@ config.omniauth :openid_connect, {
   name: :my_provider,
   scope: [:openid, :email, :profile, :address],
   response_type: :code,
+  uid_field: "preferred_username",
   client_options: {
     port: 443,
     scheme: "https",
@@ -56,13 +59,17 @@ Configuration details:
   If provider does not have Webfinger endpoint, You can specify "Issuer" to option.  
   e.g. `issuer: "https://myprovider.com"`  
   It means to get configuration from "https://myprovider.com/.well-known/openid-configuration".
+  * The uid is by default using the `sub` value from the `user_info` response,
+  which in some applications is not the expected value. To avoid such limitations, the uid label can be
+  configured by providing the omniauth `uid_label` option to a different label (i.e. `preferred_username`)
+  that appears in the `user_info` details.
 
 For the full low down on OpenID Connect, please check out
 [the spec](http://openid.net/specs/openid-connect-core-1_0.html).
 
 ## Contributing
 
-1. Fork it ( http://github.com/jjbohn/omniauth-openid-connect/fork )
+1. Fork it ( http://github.com/m0n9oose/omniauth-openid-connect/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)

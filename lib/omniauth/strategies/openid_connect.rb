@@ -4,11 +4,15 @@ require 'net/http'
 require 'open-uri'
 require 'omniauth'
 require 'openid_connect'
+require 'forwardable'
 
 module OmniAuth
   module Strategies
     class OpenIDConnect
       include OmniAuth::Strategy
+      extend Forwardable
+
+      def_delegator :request, :params
 
       option :client_options, {
         identifier: nil,
@@ -20,7 +24,8 @@ module OmniAuth
         authorization_endpoint: '/authorize',
         token_endpoint: '/token',
         userinfo_endpoint: '/userinfo',
-        jwks_uri: '/jwk'
+        jwks_uri: '/jwk',
+        end_session_endpoint: nil
       }
       option :issuer
       option :discovery, false
@@ -38,13 +43,19 @@ module OmniAuth
       option :ui_locales
       option :partner
       option :id_token_hint
-      option :login_hint
       option :acr_values
       option :send_nonce, true
       option :send_scope_to_token_endpoint, true
       option :client_auth_method
+      option :post_logout_redirect_uri
+      option :uid_field, 'sub'
 
-      uid { user_info.sub }
+      def uid
+        user_info.public_send(options.uid_field.to_s)
+      rescue NoMethodError
+        log :warn, "User sub:#{user_info.sub} missing info field: #{options.uid_field}"
+        user_info.sub
+      end
 
       info do
         {
@@ -83,22 +94,22 @@ module OmniAuth
       end
 
       def request_phase
-        options.issuer = issuer if options.issuer.blank?
-        discover! if options.discovery
+        options.issuer = issuer if options.issuer.nil? || options.issuer.empty?
+        discover!
         redirect authorize_uri
       end
 
       def callback_phase
-        error = request.params['error_reason'] || request.params['error']
+        error = params['error_reason'] || params['error']
         if error
-          raise CallbackError.new(request.params['error'], request.params['error_description'] || request.params['error_reason'], request.params['error_uri'])
-        elsif request.params['state'].to_s.empty? || request.params['state'] != stored_state
-          return Rack::Response.new(['401 Unauthorized'], 401).finish
-        elsif !request.params['code']
-          return fail!(:missing_code, OmniAuth::OpenIDConnect::MissingCodeError.new(request.params['error']))
+          raise CallbackError.new(params['error'], params['error_description'] || params['error_reason'], params['error_uri'])
+        elsif params['state'].to_s.empty? || params['state'] != stored_state
+          raise CallbackError.new('Invalid state parameter')
+        elsif !params['code']
+          return fail!(:missing_code, OmniAuth::OpenIDConnect::MissingCodeError.new(params['error']))
         else
-          options.issuer = issuer if options.issuer.blank?
-          discover! if options.discovery
+          options.issuer = issuer if options.issuer.nil? || options.issuer.empty?
+          discover!
           client.redirect_uri = redirect_uri
           client.authorization_code = authorization_code
           access_token
@@ -112,8 +123,24 @@ module OmniAuth
         fail!(:failed_to_connect, e)
       end
 
+      def other_phase
+        if logout_path_pattern.match?(current_path)
+          options.issuer = issuer if options.issuer.nil? || options.issuer.empty?
+          discover!
+          return redirect(end_session_uri) if end_session_uri
+        end
+        call_app!
+      end
+
       def authorization_code
-        request.params['code']
+        params['code']
+      end
+
+      def end_session_uri
+        return unless end_session_endpoint_is_valid?
+        end_session_uri = URI(client_options.end_session_endpoint)
+        end_session_uri.query = encoded_post_logout_redirect_uri
+        end_session_uri.to_s
       end
 
       def authorize_uri
@@ -123,7 +150,9 @@ module OmniAuth
           response_type: options.response_type,
           scope: options.scope,
           state: new_state,
-          login_hint: options.login_hint,
+          login_hint: params['login_hint'],
+          ui_locales: params['ui_locales'],
+          claims_locales: params['claims_locales'],
           prompt: options.prompt,
           nonce: (new_nonce if options.send_nonce),
           hd: options.hd,
@@ -147,10 +176,12 @@ module OmniAuth
       end
 
       def discover!
+        return unless options.discovery
         client_options.authorization_endpoint = config.authorization_endpoint
         client_options.token_endpoint = config.token_endpoint
         client_options.userinfo_endpoint = config.userinfo_endpoint
         client_options.jwks_uri = config.jwks_uri
+        client_options.end_session_endpoint = config.end_session_endpoint if config.respond_to?(:end_session_endpoint)
       end
 
       def user_info
@@ -235,8 +266,24 @@ module OmniAuth
       end
 
       def redirect_uri
-        return client_options.redirect_uri unless request.params['redirect_uri']
-        "#{ client_options.redirect_uri }?redirect_uri=#{ CGI.escape(request.params['redirect_uri']) }"
+        return client_options.redirect_uri unless params['redirect_uri']
+        "#{ client_options.redirect_uri }?redirect_uri=#{ CGI.escape(params['redirect_uri']) }"
+      end
+
+      def encoded_post_logout_redirect_uri
+        return unless options.post_logout_redirect_uri
+        URI.encode_www_form(
+          post_logout_redirect_uri: options.post_logout_redirect_uri
+        )
+      end
+
+      def end_session_endpoint_is_valid?
+        client_options.end_session_endpoint &&
+          client_options.end_session_endpoint =~ URI::DEFAULT_PARSER.make_regexp
+      end
+
+      def logout_path_pattern
+        @logout_path_pattern ||= %r{\A#{Regexp.quote(request_path)}(/logout)}
       end
 
       class CallbackError < StandardError
