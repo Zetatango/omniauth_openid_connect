@@ -215,6 +215,7 @@ module OmniAuth
         strategy.call!('rack.session' => { 'omniauth.state' => state, 'omniauth.nonce' => nonce })
         strategy.expects(:fail!)
         strategy.callback_phase
+<<<<<<< HEAD
       end
 
       def test_callback_phase_without_code
@@ -227,6 +228,8 @@ module OmniAuth
 
         strategy.expects(:fail!)
         strategy.callback_phase
+=======
+>>>>>>> fix: Allow rails applications to handle state mismatch (#14)
       end
 
       def test_callback_phase_without_code
