@@ -115,7 +115,7 @@ module OmniAuth
           access_token
           super
         end
-      rescue CallbackError => e
+      rescue CallbackError, ::Rack::OAuth2::Client::Error => e
         fail!(:invalid_credentials, e)
       rescue ::Timeout::Error, ::Errno::ETIMEDOUT => e
         fail!(:timeout, e)
