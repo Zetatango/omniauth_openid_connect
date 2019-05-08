@@ -41,7 +41,7 @@ module OmniAuth
       option :prompt, nil # [:none, :login, :consent, :select_account]
       option :hd, nil
       option :max_age
-      option :ui_locales
+      option :locale
       option :partner
       option :id_token_hint
       option :acr_values
@@ -154,7 +154,7 @@ module OmniAuth
           scope: options.scope,
           state: new_state,
           login_hint: params['login_hint'],
-          ui_locales: params['ui_locales'],
+          locale: params['locale'],
           claims_locales: params['claims_locales'],
           prompt: options.prompt,
           nonce: (new_nonce if options.send_nonce),
