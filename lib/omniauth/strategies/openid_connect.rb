@@ -42,7 +42,6 @@ module OmniAuth
       option :hd, nil
       option :max_age
       option :ui_locales
-      option :partner
       option :id_token_hint
       option :acr_values
       option :send_nonce, true
@@ -50,6 +49,10 @@ module OmniAuth
       option :client_auth_method
       option :post_logout_redirect_uri
       option :uid_field, 'sub'
+
+      # These are custom zetatango options
+      option :partner
+      option :tracked_object_id
 
       def uid
         user_info.public_send(options.uid_field.to_s)
@@ -159,7 +162,8 @@ module OmniAuth
           prompt: options.prompt,
           nonce: (new_nonce if options.send_nonce),
           hd: options.hd,
-          partner: options.partner
+          partner: options.partner,
+          tracked_object_id: options.tracked_object_id
         }
         client.authorization_uri(opts.reject { |_k, v| v.nil? })
       end
