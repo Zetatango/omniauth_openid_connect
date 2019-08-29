@@ -301,6 +301,21 @@ module OmniAuth
         strategy.callback_phase
       end
 
+      def test_callback_phase_with_ssl_error
+        code = SecureRandom.hex(16)
+        state = SecureRandom.hex(16)
+        nonce = SecureRandom.hex(16)
+        request.stubs(:params).returns('code' => code, 'state' => state)
+        request.stubs(:path_info).returns('')
+
+        strategy.options.issuer = 'example.com'
+
+        strategy.stubs(:access_token).raises(OpenSSL::SSL::SSLError)
+        strategy.call!('rack.session' => { 'omniauth.state' => state, 'omniauth.nonce' => nonce })
+        strategy.expects(:fail!)
+        strategy.callback_phase
+      end
+
       def test_info
         info = strategy.info
         assert_equal user_info.name, info[:name]
