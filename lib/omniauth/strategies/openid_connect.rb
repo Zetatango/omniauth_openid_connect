@@ -124,7 +124,7 @@ module OmniAuth
         fail!(:invalid_credentials, e)
       rescue ::Timeout::Error, ::Errno::ETIMEDOUT => e
         fail!(:timeout, e)
-      rescue ::SocketError => e
+      rescue ::SocketError, OpenSSL::SSL::SSLError => e
         fail!(:failed_to_connect, e)
       end
 
