@@ -76,7 +76,7 @@ module OmniAuth
       end
 
       extra do
-        { raw_info: user_info.raw_attributes }
+        { raw_info: raw_attributes }
       end
 
       credentials do
@@ -302,6 +302,13 @@ module OmniAuth
 
       def params
         request.params
+      end
+
+      def raw_attributes
+        hash = {}
+        hash.merge! user_info.raw_attributes if user_info&.raw_attributes.present?
+        hash.merge! access_token.raw_attributes if access_token&.raw_attributes.present?
+        hash
       end
 
       class CallbackError < StandardError

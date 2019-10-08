@@ -28,6 +28,9 @@ class StrategyTestCase < MiniTest::Test
       phone_number: Faker::PhoneNumber.phone_number,
       website: Faker::Internet.url,
     )
+
+  def access_token_raw_attributes
+    @extra_attributes ||= { extra_attribute: 1 }
   end
 
   def request

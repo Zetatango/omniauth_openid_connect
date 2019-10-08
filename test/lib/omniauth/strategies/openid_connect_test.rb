@@ -144,6 +144,8 @@ module OmniAuth
         access_token.stubs(:expires_in)
         access_token.stubs(:scope)
         access_token.stubs(:id_token).returns(File.read('test/fixtures/id_token.txt'))
+        access_token.stubs(:raw_attributes).returns(access_token_raw_attributes)
+
         client.expects(:access_token!).at_least_once.returns(access_token)
         access_token.expects(:userinfo!).returns(user_info)
 
@@ -187,6 +189,7 @@ module OmniAuth
         access_token.stubs(:expires_in)
         access_token.stubs(:scope)
         access_token.stubs(:id_token).returns(File.read('test/fixtures/id_token.txt'))
+        access_token.stubs(:raw_attributes).returns(access_token_raw_attributes)
         client.expects(:access_token!).at_least_once.returns(access_token)
         access_token.expects(:userinfo!).returns(user_info)
 
@@ -330,7 +333,10 @@ module OmniAuth
       end
 
       def test_extra
-        assert_equal({ raw_info: user_info.as_json }, strategy.extra)
+        access_token = stub('OpenIDConnect::AccessToken')
+        access_token.stubs(:raw_attributes).returns(access_token_raw_attributes)
+        strategy.instance_variable_set(:@access_token, access_token)
+        assert_equal({ raw_info: user_info.as_json.merge(access_token_raw_attributes) }, strategy.extra)
       end
 
       def test_credentials
@@ -346,6 +352,7 @@ module OmniAuth
         access_token.stubs(:access_token).returns(SecureRandom.hex(16))
         access_token.stubs(:refresh_token).returns(SecureRandom.hex(16))
         access_token.stubs(:expires_in).returns(Time.now)
+        access_token.stubs(:raw_attributes).returns(access_token_raw_attributes)
         access_token.stubs(:scope).returns('openidconnect')
         access_token.stubs(:id_token).returns(File.read('test/fixtures/id_token.txt'))
 
